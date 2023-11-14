@@ -4,7 +4,7 @@ import re
 import uuid
 import pandas as pd
 from llama_index.finetuning import EmbeddingQAFinetuneDataset
-from util import INSTRUCTION_DICT
+from utils import INSTRUCTION_DICT
 def data_reader( 
                 path="../data",
                 file_keyword='QA',
