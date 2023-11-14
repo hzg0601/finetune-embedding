@@ -3,8 +3,12 @@ import os
 import re
 import uuid
 import pandas as pd
+import numpy as np
 from llama_index.finetuning import EmbeddingQAFinetuneDataset
 from utils import INSTRUCTION_DICT
+np.random.seed(123)
+
+
 def data_reader( 
                 path="../data",
                 file_keyword='QA',
@@ -27,7 +31,7 @@ def data_reader(
 
 
 def data_dict_gen(
-                    path_dir_list=("C:/research/finetune_embedding/data/",)*3,
+                    path_dir_list=("./data/",)*3,
                     file_keyword_list=("QA","QA","分片"),
                     id_cols_list=(["文档id"],)*3,
                     content_cols_list=(["切片内容","Q","切片id"],
@@ -93,26 +97,49 @@ def unsupervised_data_process():
 def supervised_data_process():
     pass
 
+def shuffle_data(data: pd.DataFrame, return_amount:str="full",ratio:float=0.75):
+    data = data.permutation()
+    length = int(data.shape[0]*ratio)
+
+    if return_amount == "full":
+        return data 
+    elif return_amount == "train":
+        return data[:length]
+    else:
+        return data[length:]
+
 
 def union_data_process(process_func=adapter_data_process,
                        combine_flag:bool=True,
                        instruction_flag:str=None,
-                       process_args:dict=None):
+                       process_args:dict=None,
+                       return_amount:str="train"):
     """用于不同格式数据的统一处理
+       process_func: 处理数据格式的函数
+       combine_flag: 是否合并返回
+       instruction_flag:是否在query中使用instruction
+       process_args: process_func的关键字参数
+       return_amount:返回数量的量, full, train, eval,以3/4为训练集，1/4为测试集
     """
+
     data_df_dict = data_dict_gen()
     if instruction_flag:
         for key, data_df in data_df_dict.items():
             data_df_dict[key] = add_instruction(data=data_df,instruction=INSTRUCTION_DICT[key]) 
     
     if combine_flag:
-        data_df_dict = pd.concat(list(data_df_dict.values()))
+        data_df = pd.concat(list(data_df_dict.values()))
+        data_df = shuffle_data(data_df,return_amount=return_amount)
         result = process_func(data_df_dict,**process_args) if process_args is not None else process_func(data_df_dict)
+
+
     else:
         result = {}
         for key, value in data_df_dict.items():
-            result[key] = process_func(value,**process_args) if process_args is not None else process_func(value)
-    
+            value = shuffle_data(value, return_amount=return_amount)
+            temp = process_func(value,**process_args) if process_args is not None else process_func(value)
+            result[key] = temp
+
     return result
 
 
