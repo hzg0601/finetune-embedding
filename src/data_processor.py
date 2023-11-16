@@ -98,7 +98,7 @@ def supervised_data_process():
     pass
 
 def shuffle_data(data: pd.DataFrame, return_amount:str="full",ratio:float=0.75):
-    data = data.permutation()
+    data = data.take(np.random.permutation(data.shape[0]))
     length = int(data.shape[0]*ratio)
 
     if return_amount == "full":
@@ -112,7 +112,7 @@ def shuffle_data(data: pd.DataFrame, return_amount:str="full",ratio:float=0.75):
 def union_data_process(process_func=adapter_data_process,
                        combine_flag:bool=True,
                        instruction_flag:str=None,
-                       process_args:dict=None,
+                       process_args:dict={},
                        return_amount:str="train"):
     """用于不同格式数据的统一处理
        process_func: 处理数据格式的函数
@@ -130,14 +130,14 @@ def union_data_process(process_func=adapter_data_process,
     if combine_flag:
         data_df = pd.concat(list(data_df_dict.values()))
         data_df = shuffle_data(data_df,return_amount=return_amount)
-        result = process_func(data_df_dict,**process_args) if process_args is not None else process_func(data_df_dict)
+        result = process_func(data_df,**process_args)
 
 
     else:
         result = {}
         for key, value in data_df_dict.items():
             value = shuffle_data(value, return_amount=return_amount)
-            temp = process_func(value,**process_args) if process_args is not None else process_func(value)
+            temp = process_func(value,**process_args)
             result[key] = temp
 
     return result
