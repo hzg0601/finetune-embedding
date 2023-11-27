@@ -5,12 +5,31 @@ import uuid
 import pandas as pd
 import numpy as np
 from llama_index.finetuning import EmbeddingQAFinetuneDataset
+import json
+import argparse
+from utils import logger
+from tqdm import tqdm
+
+parser = argparse.ArgumentParser(description="data preprocessor")
+
+parser.add_argument("--process_func",default="adapter_data_process",type=str,
+                    choices=["adapter_data_process","unsupervised_data_process","supervised_data_process"],
+                    help="the unit function to preprocess data")
+parser.add_argument("--combine_flag",action=True,default=True,
+                    help="combine all data or not")
+parser.add_argument("--instruction_flag",action=True,default=False,
+                    help="use instruction or not,default False")
+parser.add_argument("process_args",type=dict,default={},
+                    help="the args of process_func,pass it as a str")
+parser.add_argument("--return_amount",type=str,default="train",choices=['train','full','eval'],
+                    help="the data collection to return,one of 'train','full','eval'")
+
 from utils import INSTRUCTION_DICT
 np.random.seed(123)
 
 
 def data_reader( 
-                path="../data",
+                path="./data",
                 file_keyword='QA',
                 id_cols=["文档id","切片id"],
                 content_cols=["切片内容","Q"]
@@ -90,12 +109,30 @@ def adapter_data_process(data:pd.DataFrame):
             
 
 
-def unsupervised_data_process():
+def unsupervised_data_process(data: pd.DataFrame):
     pass
 
 
-def supervised_data_process():
-    pass
+def supervised_data_process(data: pd.DataFrame,
+                            output_dir="./data",
+                            file_name="supervised_finetune_data.jsonl"):
+    logger.info("process unit data")
+    result = []
+    temp = {}
+    output_path = os.path.join(output_dir,file_name)
+    file = open(output_path,mode="a",encoding="utf-8")
+    total = data.shape[0]
+    for i,row in tqdm(data.iterrows(),total=total):
+        temp["query"] = row["query"]
+        temp["pos"] = row["doc"]
+        candidate = data.drop(i,inplace=False)["doc"]
+        temp["neg"] = np.random.choice(candidate,1)
+        json.dump(temp,file)
+        result.append(temp)
+    file.close()
+    logger.info("process unit done.")
+    return result
+
 
 def shuffle_data(data: pd.DataFrame, return_amount:str="full",ratio:float=0.75):
     data = data.take(np.random.permutation(data.shape[0]))
@@ -121,7 +158,7 @@ def union_data_process(process_func=adapter_data_process,
        process_args: process_func的关键字参数
        return_amount:返回数量的量, full, train, eval,以3/4为训练集，1/4为测试集
     """
-
+    logger.info("start to process data ...")
     data_df_dict = data_dict_gen()
     if instruction_flag:
         for key, data_df in data_df_dict.items():
@@ -139,14 +176,19 @@ def union_data_process(process_func=adapter_data_process,
             value = shuffle_data(value, return_amount=return_amount)
             temp = process_func(value,**process_args)
             result[key] = temp
-
+    logger.info("process data done.")
     return result
 
 
 if __name__ == "__main__":
 
-    data_dict_df = data_dict_gen()
-    adapter_dict = {}
-    for key, value in data_dict_df.items():
-        adapter_dict[key] = adapter_data_process(value)
+    args = parser.parse_args()
+    result = union_data_process(
+        process_func=eval(args.process_func),
+        combine_flag=args.combine_flag,
+        instruction_flag=args.instruction_flag,
+        process_args=eval(args.process_args), # 
+        return_amount=args.return_amount
+    )
+
 
