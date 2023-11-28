@@ -9,27 +9,26 @@ import json
 import argparse
 from utils import logger
 from tqdm import tqdm
-
 parser = argparse.ArgumentParser(description="data preprocessor")
 
 parser.add_argument("--process_func",default="adapter_data_process",type=str,
                     choices=["adapter_data_process","unsupervised_data_process","supervised_data_process"],
                     help="the unit function to preprocess data")
-parser.add_argument("--combine_flag",action=True,default=True,
+parser.add_argument("--combine_flag",action="store_true",default=True,
                     help="combine all data or not")
-parser.add_argument("--instruction_flag",action=True,default=False,
+parser.add_argument("--instruction_flag",action="store_false",default=False,
                     help="use instruction or not,default False")
 parser.add_argument("process_args",type=dict,default={},
                     help="the args of process_func,pass it as a str")
 parser.add_argument("--return_amount",type=str,default="train",choices=['train','full','eval'],
                     help="the data collection to return,one of 'train','full','eval'")
 
-from utils import INSTRUCTION_DICT
+from utils import INSTRUCTION_DICT,DATA_PATH,MODEL_PATH
+
 np.random.seed(123)
 
-
 def data_reader( 
-                path="./data",
+                path=DATA_PATH,
                 file_keyword='QA',
                 id_cols=["文档id","切片id"],
                 content_cols=["切片内容","Q"]
@@ -50,7 +49,7 @@ def data_reader(
 
 
 def data_dict_gen(
-                    path_dir_list=("./data/",)*3,
+                    path_dir_list=(DATA_PATH,)*3,
                     file_keyword_list=("QA","QA","分片"),
                     id_cols_list=(["文档id"],)*3,
                     content_cols_list=(["切片内容","Q","切片id"],
@@ -72,9 +71,9 @@ def data_dict_gen(
                                                     content_cols_list
                                                     ):
         data_dict[key] = data_reader(path=path,
-                                            file_keyword=file_keyword,
-                                            id_cols=id_cols,
-                                            content_cols=content_cols).rename(columns=cols_map)
+                                    file_keyword=file_keyword,
+                                    id_cols=id_cols,
+                                    content_cols=content_cols).rename(columns=cols_map)
     return data_dict
 
 def add_instruction(data:pd.DataFrame,instruction:str=None):
@@ -114,20 +113,22 @@ def unsupervised_data_process(data: pd.DataFrame):
 
 
 def supervised_data_process(data: pd.DataFrame,
-                            output_dir="./data",
-                            file_name="supervised_finetune_data.jsonl"):
+                            output_dir=DATA_PATH,
+                            file_name="supervised_finetune_data_train.jsonl",
+                            n_negs=3):
     logger.info("process unit data")
     result = []
     temp = {}
     output_path = os.path.join(output_dir,file_name)
-    file = open(output_path,mode="a",encoding="utf-8")
+    file = open(output_path,mode="w",encoding="utf-8")
     total = data.shape[0]
     for i,row in tqdm(data.iterrows(),total=total):
         temp["query"] = row["query"]
-        temp["pos"] = row["doc"]
-        candidate = data.drop(i,inplace=False)["doc"]
-        temp["neg"] = np.random.choice(candidate,1)
-        json.dump(temp,file)
+        temp["pos"] = [row["doc"]]
+        candidate = data[data["doc_id"] != row["doc_id"]]["doc"]
+        temp["neg"] = np.random.choice(candidate,n_negs).tolist()
+        json.dump(temp,file,ensure_ascii=False)
+        file.write("\n")
         result.append(temp)
     file.close()
     logger.info("process unit done.")
@@ -146,10 +147,10 @@ def shuffle_data(data: pd.DataFrame, return_amount:str="full",ratio:float=0.75):
         return data[length:]
 
 
-def union_data_process(process_func=adapter_data_process,
+def union_data_process(process_func=supervised_data_process,
                        combine_flag:bool=True,
-                       instruction_flag:str=None,
-                       process_args:dict={},
+                       instruction_flag:str=False,
+                       process_args:dict={"file_name":"supervised_finetune_data.jsonl"},
                        return_amount:str="train"):
     """用于不同格式数据的统一处理
        process_func: 处理数据格式的函数
@@ -182,13 +183,14 @@ def union_data_process(process_func=adapter_data_process,
 
 if __name__ == "__main__":
 
-    args = parser.parse_args()
-    result = union_data_process(
-        process_func=eval(args.process_func),
-        combine_flag=args.combine_flag,
-        instruction_flag=args.instruction_flag,
-        process_args=eval(args.process_args), # 
-        return_amount=args.return_amount
-    )
+    # args = parser.parse_args()
+    # result = union_data_process(
+    #     process_func=eval(args.process_func),
+    #     combine_flag=args.combine_flag,
+    #     instruction_flag=args.instruction_flag,
+    #     process_args=eval(args.process_args), # 
+    #     return_amount=args.return_amount
+    # )
+    union_data_process()
 
 

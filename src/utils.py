@@ -23,3 +23,7 @@ INSTRUCTION_DICT = {
     "content_answer": ANSWER_INSTRUCTION,
     "content_summary": SUMMARY_INSTRUCTION
 }
+
+PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_PATH = os.path.join(PROJECT_PATH,"data")
+MODEL_PATH = os.path.join(PROJECT_PATH,"model_output")

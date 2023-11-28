@@ -1,8 +1,12 @@
+script_dir=$(readlink -f "$0")
+current_dir=$(dirname $(dirname $script_dir))
+echo currrent dir is $current_dir
+
 torchrun --nproc_per_node 1 \
 -m FlagEmbedding.baai_general_embedding.finetune.run \
---output_dir ./model_output/supervised_train/ \
---model_name_or_path BAAI/bge-large-zh-v1.5 \
---train_data ./data/supervised_finetune_data.jsonl \
+--output_dir $current_dir/model_output/supervised_train/ \
+--model_name_or_path $HOME/models/bge-large-zh-v1.5 \
+--train_data $current_dir/data/supervised_finetune_data_minedHN.jsonl \
 --learning_rate 1e-5 \
 --fp16 \
 --num_train_epochs 5 \
