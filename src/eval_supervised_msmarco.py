@@ -69,8 +69,8 @@ class Args:
         default=None,
         metadata={"help":"path to private eval data"}
     )
-    add_extra_corpus: str = field(
-        default=True,
+    add_extra_corpus: bool = field(
+        default=False,
         metadata={"help":"add extra corpus on positive chunks when evaluating"}
     )
 

@@ -11,15 +11,16 @@ from utils import logger
 from tqdm import tqdm
 parser = argparse.ArgumentParser(description="data preprocessor")
 
-parser.add_argument("--process_func",default="adapter_data_process",type=str,
+parser.add_argument("--process_func",default="supervised_data_process",type=str,
                     choices=["adapter_data_process","unsupervised_data_process","supervised_data_process"],
                     help="the unit function to preprocess data")
 parser.add_argument("--combine_flag",action="store_true",default=True,
                     help="combine all data or not")
-parser.add_argument("--instruction_flag",action="store_false",default=False,
+parser.add_argument("--no_instruction_flag",action="store_false",default=False,
                     help="use instruction or not,default False")
-parser.add_argument("process_args",type=dict,default={},
+parser.add_argument("--process_args",type=str,default='{"file_name":"supervised_finetune_data_eval.jsonl"}',
                     help="the args of process_func,pass it as a str")
+
 parser.add_argument("--return_amount",type=str,default="train",choices=['train','full','eval'],
                     help="the data collection to return,one of 'train','full','eval'")
 
@@ -150,8 +151,8 @@ def shuffle_data(data: pd.DataFrame, return_amount:str="full",ratio:float=0.75):
 def union_data_process(process_func=supervised_data_process,
                        combine_flag:bool=True,
                        instruction_flag:str=False,
-                       process_args:dict={"file_name":"supervised_finetune_data.jsonl"},
-                       return_amount:str="train"):
+                       process_args:dict={"file_name":"supervised_finetune_data_eval.jsonl"},
+                       return_amount:str="eval"):
     """用于不同格式数据的统一处理
        process_func: 处理数据格式的函数
        combine_flag: 是否合并返回
@@ -183,14 +184,14 @@ def union_data_process(process_func=supervised_data_process,
 
 if __name__ == "__main__":
 
-    # args = parser.parse_args()
-    # result = union_data_process(
-    #     process_func=eval(args.process_func),
-    #     combine_flag=args.combine_flag,
-    #     instruction_flag=args.instruction_flag,
-    #     process_args=eval(args.process_args), # 
-    #     return_amount=args.return_amount
-    # )
-    union_data_process()
+    args = parser.parse_args()
+    result = union_data_process(
+        process_func=eval(args.process_func),
+        combine_flag=args.combine_flag,
+        instruction_flag=args.no_instruction_flag,
+        process_args=eval(args.process_args), # 
+        return_amount=args.return_amount
+    )
+    # union_data_process()
 
 
