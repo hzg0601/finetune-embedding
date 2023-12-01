@@ -54,11 +54,11 @@ class Args:
     )
 
     save_embedding: bool = field(
-        default=True,
+        default=False,
         metadata={'help': 'Save embeddings in memmap at save_dir?'}
     )
     load_embedding: bool = field(
-        default=True,
+        default=False,
         metadata={'help': 'Load embeddings from save_dir?'}
     )
     save_path: str = field(
